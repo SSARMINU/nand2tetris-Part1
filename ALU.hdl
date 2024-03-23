@@ -1,0 +1,47 @@
+CHIP ALU {
+    IN  
+        x[16], y[16],  // 16-bit inputs
+        zx,            // zero the x input?
+        nx,            // negate the x input?
+        zy,            // zero the y input?
+        ny,            // negate the y input?
+        f,             // compute out = x + y (if 1) or out = x & y (if 0)
+        no;            // negate the out output?
+
+    OUT 
+        out[16],       // 16-bit output
+        zr,            // 1 if (out == 0), 0 otherwise
+        ng;            // 1 if (out < 0), 0 otherwise
+
+    PARTS:
+    // Zero the x input if zx is 1
+    Mux16(a=x, b=false, sel=zx, out=zdx);
+    // Negate the x input if nx is 1
+    Not16(in=zdx, out=notx);
+    Mux16(a=zdx, b=notx, sel=nx, out=ndx);
+    
+    // Zero the y input if zy is 1
+    Mux16(a=y, b=false, sel=zy, out=zdy);
+    // Negate the y input if ny is 1
+    Not16(in=zdy, out=noty);
+    Mux16(a=zdy, b=noty, sel=ny, out=ndy);
+
+    // Compute the sum of x and y if f is 1, otherwise compute the bitwise AND
+    Add16(a=ndx, b=ndy, out=xplusy);
+    And16(a=ndx, b=ndy, out=xandy);
+    Mux16(a=xandy, b=xplusy, sel=f, out=fxy);
+
+    // Negate the output if no is 1
+    Not16(in=fxy, out=nfxy);
+    Mux16(a=fxy, b=nfxy, sel=no, out=oo);
+
+    // Compute zr (1 if out == 0, 0 otherwise)
+    Or16Way(in=oo, out=o);
+    Not(in=o, out=zr);
+
+    // Compute ng (1 if out < 0, 0 otherwise)
+    And16(a[0..15]=true, b=oo, out[15]=ng, out[0..14]=drop);
+
+    // Set the output
+    Or16(a=oo, b=false, out=out);
+}
